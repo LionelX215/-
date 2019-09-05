@@ -1,0 +1,732 @@
+Flask本身相当于一个内核，其他几乎所有功能都需要扩展实现。
+Flask是一个基于Python开发并且依赖jinja2模板和Werkzeug WSGI服务的一个微型框架，对于Werkzeug本质是Socket服务端，其用于接收http请求并对请
+求进行预处理，然后触发Flask框架，开发人员基于Flask框架提供的功能对请求进行相应的处理，并返回给用户，如果要返回给用户复杂的内容时，需要
+借助jinja2模板来实现对模板的处理，即：将模板和数据进行渲染，将渲染后的字符串返回给用户浏览器。
+
+内核包括 Werkzeug(路由模块)    Jinja2(模板引擎)
+
+个人理解flask的工作流程：首先通过地址找到对应的def的函数，然后根据模板要求去返回值。每次web提交新的操作都会计算。
+
+Flask常用扩展包：
+
+Flask-SQLalchemy：操作数据库；
+Flask-script：插入脚本；
+Flask-migrate：管理迁移数据库；
+Flask-Session：Session存储方式指定；
+Flask-WTF：表单；
+Flask-Mail：邮件；
+Flask-Bable：提供国际化和本地化支持，翻译；
+Flask-Login：认证用户状态；
+Flask-OpenID：认证；
+Flask-RESTful：开发REST API的工具；
+Flask-Bootstrap：集成前端Twitter Bootstrap框架；
+Flask-Moment：本地化日期和时间；
+Flask-Admin：简单而可扩展的管理接口的框架
+
+开发tricks: 
+	在terminal中，可以执行   pip freeze > name.txt		输出当前环境中所包含的包
+	pip install -r name.txt								安装文件中所需求的包
+	
+	
+# Hello World!
+# 1. 导入Flask扩展
+from flask import Flask
+# from flask import render_template  # 这是模板的包 对应下面的模板返回
+
+# 2. 创建Flask应用程序实例
+app = Flask(__name__)       # 传入的是__name__，作用是为了确定资源所在的路径
+
+# 定义路由及视图函数
+@app.route('/')     # 装饰器实现定义路由，根路由，就是展示的地址。  即只要登录根路由，会自动执行下面的函数
+def hello_world():
+    return 'Hello World!'                   # 返回字符串 'Hello World!'
+    # return render_template('index.html')    # 返回模板的内容，index.html是一个写好的网页，通过return这个就可以返回index.html这个模板的内容。
+
+# 4. 启动程序
+if __name__ == '__main__':
+    # 执行run，就会将flask程序运行在一个简易的服务器(Flask提供的用于测试的服务器)上。
+    app.run()
+
+
+路由请求方式：
+@app.route('/', methods=['GET', 'POST'])
+# 这是设定请求方式，默认只有GET
+
+路由传参示例：
+有时需要将同一类URL映射到同一个视图函数处理  比如http://127.0.0.1:5000/orders/数字  数字可能对应着不同的数据，但是前面都是一样的，
+对每个数据都设置一个解析函数不太可能，可以通过一个解析函数，传入参数的方式，对这一类的URL进行处理。
+# 定义一个视图函数
+@app.route('/orders/<order_id>')  # <> 里面就是一个动态的参数，内部是名字。
+def get_order_id(order_id):
+    return 'order_id %s' % order_id
+# 使用就是在对应的URL后面添加需要的order_id  这里返回的就是  order_id xxx  形式的字符串
+
+对于很多时候，order_id需要做访问限制，比如上面的代码就是默认将order_id作为字符串格式传入，如果只能要int类型：
+def get_order_id('/orders/<int:order_id>')
+# 这样就可以将输入的转为int形式，不能够转为int形式的输入就访问不到
+# 原理就是：做了限定之后，会将输入强制转换为设定的格式，如果不能转换，就无法匹配该路由。
+
+
+
+Jinja2模板引擎
+模板：
+    视图函数如果返回字符串，那必然是程序定义好的内容，实际中可能需要返回网页，因为网页中有很多内容可能不是写好的，而是服务器根据不同
+    的状态去计算的。所以就需要html文件接收数据然后动态的返回。模板的目的就是将数据填充到网页中然后返回，被填充的这个网页就叫做模板。
+from flask import Flask, render_template
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello_world():
+
+    # 比如 需要传入网址
+    urls_str = 'www.baidu.com'
+    my_list = [0,1,2,3,4,5]
+
+    # 返回一个模板
+    return render_template('index.html', urls_str=urls_str, my_list=my_list) # 模板, 模板中参数名字=传入的值  键值对方式传入
+    # 这是一个简单的例子，传入的东西其实可以加一些逻辑或者计算，从而产生了动态的输出的效果。
+
+if __name__ == '__main__':
+    app.run()
+
+# index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+这是模板<br>
+这是首页<br>
+
+{{ urls_str }}  <br>        # 用{{}}来表示变量名，这种{{}}语法叫做 变量代码块   此行输出：www.baidu.com
+{{ my_list }}  <br>         # 此行输出: [0,1,2,3,4,5]
+{{ my_list.2 }}  <br>       # 此行输出：2        my_list[2]效果相同
+                            # 同理，字典也可以用  . 和 [] 的方式调用
+                            
+</body>
+</html>
+
+变量代码块：  {{ 变量名 }}
+注释：         {# {{}} #}      使用{# #}进行注释 
+
+控制代码块：  {% if或for等 %}
+
+from flask import Flask, render_template
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello_world():
+    my_list = [0,1,2,3,4,5]
+
+    # 返回一个模板
+    return render_template('index.html', my_list=my_list)
+
+if __name__ == '__main__':
+    app.run()
+
+# index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+{% for foo in my_list %}    # 建立了循环
+    {% if foo>3 %}
+        {{ foo }} <br>       # 循环体内部的内容
+    {% endif %}
+{% endfor %}        # 循环结束标志
+                            
+</body>
+</html>
+
+过滤器： {{ variable | filter_name(*args) }}        过滤器使用方式： 变量名|过滤器
+    过滤器本质就是函数，只不过是针对模板的。
+    有时不仅仅只需要输出变量的值，还需要修改变量的便是，甚至格式、运算等等，而模板中不能直接调用Python中的某
+    些方法，那么这就用到了过滤器。
+    自带过滤器：
+        safe：禁用转义
+        <p>{{ '<em>hello</em>' | safe }}</p>
+        capitalize：把变量值的首字母转成大写，其余字母转小写
+        <p>{{ 'hello' | capitalize }}</p>
+        lower：把值转成小写
+        <p>{{ 'HELLO' | lower }}</p>
+        upper：把值转成大写
+        <p>{{ 'hello' | upper }}</p>
+        title：把值中的每个单词的首字母都转成大写
+        <p>{{ 'hello' | title }}</p>
+        reverse：字符串反转
+        <p>{{ 'olleh' | reverse }}</p>
+        format：格式化输出
+        <p>{{ '%s is %d' | format('name',17) }}</p>
+        striptags：渲染之前把值中所有的HTML标签都删掉
+        <p>{{ '<em>hello</em>' | striptags }}</p>
+        列表
+        * 使用格式:{{ 列表 | 列表过滤器 }}
+        first：取第一个元素
+        <p>{{ [1,2,3,4,5,6] | first }}</p>      # {{ my_list | filter }} 也是一样的
+        last：取最后一个元素
+        <p>{{ [1,2,3,4,5,6] | last }}</p>
+        length：获取列表长度
+        <p>{{ [1,2,3,4,5,6] | length }}</p>
+        sum：列表求和
+        <p>{{ [1,2,3,4,5,6] | sum }}</p>
+        sort：列表排序
+        <p>{{ [6,2,3,1,5,4] | sort }}</p>
+
+index.html:
+{{ urls_str | upper }}  # 变为大写输出
+{{ urls_str | upper | reverse }}    # 大写 并 反转
+
+{{ my_list | length }}  <br>        # 输出  6
+{{ urls_str | upper | reverse }}    # 输出 MOC.UDIAB.WWW
+
+
+
+
+Web表单：
+    web表单是web应用程序的基本功能。他是HTML页面中负责数据采集的部件。表单有三个部分组成：表单标签、表单域、
+    表单按钮。表单允许用户输入数据，负责HTML页面的数据采集，通过表单将用户的输入数据提交给服务器。
+    
+    Flask中，处理web表单，一般使用Flask-WTF扩展，它封装了WTForms，并且有验证表单数据的功能。
+    
+    示例：
+    首先是使用普通方法实现：
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Title</title>
+    </head>
+    <body>
+
+    <form method="post">
+    {# 表单，方法是post #}
+        <label>用户名：</label><input type="text" name="username"><br>
+        <label>密码：</label><input type="password" name="password"><br>
+        <label>确认密码：</label><input type="password" name="password2"><br>
+        <input type="submit" value="提交"><br>
+    </form>
+
+    </body>
+    </html>
+    
+    # app.py
+    from flask import Flask, render_template, request, flash
+
+    app = Flask(__name__)
+    
+    app.secret_key = 'abc'
+
+    # 实现一个简单的登录的逻辑处理
+    # 1. 路由需要有get和post两种请求方式  --> 需要判断请求方式
+    # 2. 获取请求的参数
+    # 3. 判断参数是否正确
+    # 4. 如果都没有问题，就返回Success字符串。
+
+    # 给模板传递消息
+    # flash  --> 需要对内容加密，因此需要设置secret_key。
+
+    @app.route('/', methods=['GET', 'POST'])
+    def index():
+        # request: 请求对象  --> 获取请求方式、数据
+        if request.method == 'POST':
+            # request获取请求的参数   这样就从index.html中获取了表单中的数据
+            username = request.form.get('username')
+            password = request.form.get('password')
+            password2 = request.form.get('password2')
+            # print(username, password, password2)
+            if not all([username, password, password2]):
+                # 使用print，不是在网页中显示。
+                # print('参数不匹配。')
+                flash('参数不匹配。')
+                # 使用flash可以将信息传递给模板，模板再输出就可以了
+            elif password != password2:
+                # print('密码不匹配。')
+                flash('密码不匹配.')
+            else:
+                # print('Success')
+                flash('Success')
+
+        return render_template('index.html')
+
+    if __name__ == '__main__':
+        app.run()
+    
+    通过Flask-WTF扩展实现：
+    使用WTF扩展，就不再在html文件中创建表单，而是在py文件中创建表单，html文件只调用。
+    
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Title</title>
+    </head>
+    <body>
+
+    <form method="post">
+    {# 表单，方法是post #}
+        <label>用户名：</label><input type="text" name="username"><br>
+        <label>密码：</label><input type="password" name="password"><br>
+        <label>确认密码：</label><input type="password" name="password2"><br>
+        <input type="submit" value="提交"><br>
+
+    {# 使用遍历获取闪现的消息 #}
+        {% for message in get_flashed_messages() %}
+            {{ message }}
+        {% endfor %}
+    </form>
+
+    <hr>
+
+    <form method="post">
+        {{ login_form.username.label }}{{ login_form.username }} <br>    {# 前面是内容，后面是格式框 #}
+        {{ login_form.password.label }}{{ login_form.password }} <br>
+        {{ login_form.password2.label }}{{ login_form.password2 }} <br>
+        {{ login_form.username }} <br>
+    </form>
+
+    </body>
+    </html>
+    
+    # app.py
+    from flask import Flask, render_template, request, flash
+    from flask_wtf import FlaskForm
+    from wtforms import StringField, PasswordField, SubmitField
+
+    app = Flask(__name__)
+    app.secret_key = 'abc'
+    # 实现一个简单的登录的逻辑处理
+    # 1. 路由需要有get和post两种请求方式  --> 需要判断请求方式
+    # 2. 获取请求的参数
+    # 3. 判断参数是否正确
+    # 4. 如果都没有问题，就返回Success字符串。
+
+    # 给模板传递消息
+    # flash
+
+    # 使用WTF实现表单
+    # 自定义表单类
+    class LoginForm(FlaskForm):
+        username = StringField('用户名：')
+        password = PasswordField('密码：')
+        password2 = PasswordField('确认密码：')
+        submit = SubmitField('提交：')
+
+    @app.route('/form', methods=['GET', 'POST'])
+    def login():
+        login_form = LoginForm()
+        return render_template('index.html', logi_form=login_form)
+
+
+
+    @app.route('/', methods=['GET', 'POST'])
+    def index():
+        # request: 请求对象  --> 获取请求方式、数据
+        if request.method == 'POST':
+            # request获取请求的参数   这样就从index.html中获取了表单中的数据
+            username = request.form.get('username')
+            password = request.form.get('password')
+            password2 = request.form.get('password2')
+            # print(username, password, password2)
+            if not all([username, password, password2]):
+                # print('参数不完整。')
+                flash(u'参数不匹配。')
+            elif password != password2:
+                # print('密码不匹配。')
+                flash(u'密码不匹配.')
+            else:
+                # print('Success')
+                return 'Success'
+
+        return render_template('index.html')
+
+
+    if __name__ == '__main__':
+        app.run()
+
+    # 流程讲解：首先通过flask-wtf的FlaskForm类得到继承类，然后在类中定义表单的格式，所以需要从wtfforms导入StringField等。
+    # 然后创建对象，将值传入index模板。  html文件中，先取label值，再取框，就完成了。
+
+    WTForms支持的HTML标准字段：
+    StringField                 文本字段
+    TextAreaField               多行文本字段
+    PasswordField               密码本文字段
+    HiddenField                 隐藏文本字段
+    ...太多了  需要用到的时候百度吧
+    
+    WTForms常用验证函数：
+    DataRequired                确保字段中有数据
+    EqualTo                     比较两个字段的值，常用于比较两次密码输入
+    Length                      验证输入的字符串长度
+    NumberRange                 验证输入数字在范围内
+    URL                         验证URL
+    AnyOf                       验证输入值在可选列表中
+    NoneOf                      验证输入值不在可选列表中
+    使用Flask-WTF需要配置参数secret_key
+
+    验证实现：
+    from wtform.validators import DataRequired, EqualTo
+    class LoginForm(FlaskForm):
+        username = StringField('用户名：', validators=[DataRequired()])
+        password = PasswordField('密码：', validators=[DataRequired()])
+        password2 = PasswordField('确认密码：', validators=[DataRequired(), EqualTo('password', '密码填入不一致')])
+        # EqualTo(a,b): 第一个参数是比较的变量的变量名，第二个是如果不一致的返回内容。
+        submit = SubmitField('提交：')
+
+Flask中使用数据库：
+Flask-SQLAlchemy扩展
+
+
+
+
+
+
+# 添加BERT用于识别句子开始和结束的“CLS”和“SEP”标记。还为每个输入添加“index”和“segment”标记。因此，根据BERT格式化输入的所有工作都由此函数完成。
+def convert_examples_to_features(examples, max_seq_length, tokenizer):
+    """Loads a data file into a list of `InputBatch`s."""
+
+    features = []
+    for (ex_index, example) in enumerate(examples):
+        print(example.text_a)
+        tokens_a = tokenizer.tokenize(example.text_a)
+
+        tokens_b = None
+        if example.text_b:
+            tokens_b = tokenizer.tokenize(example.text_b)
+            # Modifies `tokens_a` and `tokens_b` in place so that the total
+            # length is less than the specified length.
+            # Account for [CLS], [SEP], [SEP] with "- 3"
+            _truncate_seq_pair(tokens_a, tokens_b, max_seq_length - 3)
+        else:
+            # Account for [CLS] and [SEP] with "- 2"
+            if len(tokens_a) > max_seq_length - 2:
+                tokens_a = tokens_a[:(max_seq_length - 2)]
+
+        # The convention in BERT is:
+        # (a) For sequence pairs:
+        #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
+        #  type_ids: 0   0  0    0    0     0       0 0    1  1  1  1   1 1
+        # (b) For single sequences:
+        #  tokens:   [CLS] the dog is hairy . [SEP]
+        #  type_ids: 0   0   0   0  0     0 0
+        #
+        # Where "type_ids" are used to indicate whether this is the first
+        # sequence or the second sequence. The embedding vectors for `type=0` and
+        # `type=1` were learned during pre-training and are added to the wordpiece
+        # embedding vector (and position vector). This is not *strictly* necessary
+        # since the [SEP] token unambigiously separates the sequences, but it makes
+        # it easier for the model to learn the concept of sequences.
+        #
+        # For classification tasks, the first vector (corresponding to [CLS]) is
+        # used as as the "sentence vector". Note that this only makes sense because
+        # the entire model is fine-tuned.
+        tokens = ["[CLS]"] + tokens_a + ["[SEP]"]
+        segment_ids = [0] * len(tokens)
+
+        if tokens_b:
+            tokens += tokens_b + ["[SEP]"]
+            segment_ids += [1] * (len(tokens_b) + 1)
+
+        input_ids = tokenizer.convert_tokens_to_ids(tokens)
+
+        # The mask has 1 for real tokens and 0 for padding tokens. Only real
+        # tokens are attended to.
+        input_mask = [1] * len(input_ids)
+
+        # Zero-pad up to the sequence length.
+        padding = [0] * (max_seq_length - len(input_ids))
+        input_ids += padding
+        input_mask += padding
+        segment_ids += padding
+
+        assert len(input_ids) == max_seq_length
+        assert len(input_mask) == max_seq_length
+        assert len(segment_ids) == max_seq_length
+
+        labels_ids = []
+        for label in example.labels:
+            labels_ids.append(int(label))
+
+        if ex_index < 0:
+            logger.info("*** Example ***")
+            logger.info("guid: %s" % (example.guid))
+            logger.info("tokens: %s" % " ".join(
+                [str(x) for x in tokens]))
+            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+            logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
+            logger.info(
+                "segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
+            logger.info("label: %s (id = %s)" % (example.labels, labels_ids))
+
+        features.append(
+            InputFeatures(input_ids=input_ids,
+                          input_mask=input_mask,
+                          segment_ids=segment_ids,
+                          label_ids=labels_ids))
+    return features
+
+
+
+def convert_single_example(ex_index, example, max_seq_length,
+                           tokenizer):
+    """Converts a single `InputExample` into a single `InputFeatures`."""
+
+    if isinstance(example, PaddingInputExample):
+        # isinstance(obj, classinfo) 判断obj是不是某个类型       examples应该是InputExample，不是PaddingInputExample
+        return InputFeatures(
+            input_ids=[0] * max_seq_length,
+            input_mask=[0] * max_seq_length,
+            segment_ids=[0] * max_seq_length,
+            label_ids=0,
+            is_real_example=False)
+
+    tokens_a = tokenizer.tokenize(example.text_a)
+    # 分词后
+    tokens_b = None
+    if example.text_b:
+        tokens_b = tokenizer.tokenize(example.text_b)
+
+    if tokens_b:
+        # Modifies `tokens_a` and `tokens_b` in place so that the total
+        # length is less than the specified length.
+        # Account for [CLS], [SEP], [SEP] with "- 3"
+        _truncate_seq_pair(tokens_a, tokens_b, max_seq_length - 3)
+    else:
+        # Account for [CLS] and [SEP] with "- 2"
+        if len(tokens_a) > max_seq_length - 2:
+            tokens_a = tokens_a[0:(max_seq_length - 2)]
+            # 截断处理，如果文本长度大与max_length-2 就截断。   -2是因为有开头和结束符。 CLS、SEP
+
+    # The convention in BERT is:
+    # (a) For sequence pairs:
+    #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
+    #  type_ids: 0     0  0    0    0     0       0 0     1  1  1  1   1 1
+    # (b) For single sequences:
+    #  tokens:   [CLS] the dog is hairy . [SEP]
+    #  type_ids: 0     0   0   0  0     0 0
+    #
+    # Where "type_ids" are used to indicate whether this is the first
+    # sequence or the second sequence. The embedding vectors for `type=0` and
+    # `type=1` were learned during pre-training and are added to the wordpiece
+    # embedding vector (and position vector). This is not *strictly* necessary
+    # since the [SEP] token unambiguously separates the sequences, but it makes
+    # it easier for the model to learn the concept of sequences.
+    #
+    # For classification tasks, the first vector (corresponding to [CLS]) is
+    # used as the "sentence vector". Note that this only makes sense because
+    # the entire model is fine-tuned.
+    tokens = []
+    segment_ids = []
+    tokens.append("[CLS]")
+    segment_ids.append(0)
+    for token in tokens_a:
+        tokens.append(token)
+        segment_ids.append(0)
+    tokens.append("[SEP]")
+    segment_ids.append(0)
+    # 按照上面英文注释的格式添加，中文是字。
+
+    if tokens_b:
+        for token in tokens_b:
+            tokens.append(token)
+            segment_ids.append(1)
+        tokens.append("[SEP]")
+        segment_ids.append(1)
+
+    input_ids = tokenizer.convert_tokens_to_ids(tokens)
+    # tokens是分好的词的list，转为词的ids值。
+
+    # The mask has 1 for real tokens and 0 for padding tokens. Only real
+    # tokens are attended to. 只有有真实值的位置上为1，其他是padding的位置都为0.
+    input_mask = [1] * len(input_ids)
+
+    # 如果sentence没有达到目标长度，用padding使sentence达到目标长度
+    while len(input_ids) < max_seq_length:
+        # input_ids:分词的ids      input_mask:在sentence位置标注1，padding位置标注0      segment_ids:第一句话标注0，第二句话标注1。
+        input_ids.append(0)
+        input_mask.append(0)
+        segment_ids.append(0)
+
+    assert len(input_ids) == max_seq_length
+    assert len(input_mask) == max_seq_length
+    assert len(segment_ids) == max_seq_length
+
+    labels_ids = []
+    for label in example.labels:
+        labels_ids.append(int(label))
+
+    feature = InputFeatures(
+        input_ids=input_ids,
+        input_mask=input_mask,
+        segment_ids=segment_ids,
+        label_ids=labels_ids,
+        is_real_example=True)
+    return feature
+
+
+def file_based_convert_examples_to_features(
+        examples, max_seq_length, tokenizer, output_file):
+    """将一组input_examples存入TFRecord文件"""
+
+    writer = tf.python_io.TFRecordWriter(output_file)
+
+    for (ex_index, example) in enumerate(examples):
+        # examples是List,则ex_index是index，example是单个样本所有信息的obj。
+        # if ex_index % 10000 == 0:
+        # tf.logging.info("Writing example %d of %d" % (ex_index, len(examples)))
+
+        feature = convert_single_example(ex_index, example,
+                                         max_seq_length, tokenizer)
+
+        # 返回的feature是InputFeatures类型的单个样本的对象。
+
+        def create_int_feature(values):
+            f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
+            # 这里生成的是能够统一形式存储的格式，存入TFRecord文件。  整数型List
+            return f
+
+        features = collections.OrderedDict()
+        features["input_ids"] = create_int_feature(feature.input_ids)
+        features["input_mask"] = create_int_feature(feature.input_mask)
+        features["segment_ids"] = create_int_feature(feature.segment_ids)
+        features["is_real_example"] = create_int_feature(
+            [int(feature.is_real_example)])
+        if isinstance(feature.label_ids, list):
+            # 输出tuple，tuple的第一个元素是list
+            label_ids = feature.label_ids
+        else:
+            label_ids = feature.label_ids[0]
+        features["label_ids"] = create_int_feature(label_ids)
+
+        tf_example = tf.train.Example(features=tf.train.Features(feature=features))
+        # 整理一条样本数据。
+        writer.write(tf_example.SerializeToString())
+        # 数据写入TFRecord文件。 SerializeToString()序列化字符串，节省存储空间。
+    writer.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from flask import Flask, render_template, request, redirect
+from functools import reduce
+
+import sys
+sys.path.append(r'E:\Toxic_BERT_multi_task')
+from sss import create_df_data, test_main, create_output
+
+# 模型参数
+ID = 'id'
+DATA_COLUMN = 'content'
+LABEL_COLUMNS = ['environment', 'price_level', 'traffic', 'food']
+num_labels = len(LABEL_COLUMNS)
+use_one_hot_embeddings = False
+MAX_SEQ_LENGTH = 128
+BATCH_SIZE = 4
+# 加载estimator
+estimator, tokenizer = test_main()
+
+app = Flask(__name__)
+
+@app.route('/', methods=['GET','POST'])
+def hello_world():
+    if request.method == 'POST':
+        data_input = list(request.values.get('data_input'))
+        # request.values.get默认输出为MultiDict格式，输入会是一个字一个字的，这里转为数组。
+        data_input = [''.join(data_input)]
+        # 拼接字符放到数组中就可以输入了
+        res = fn_input(data_input, LABEL_COLUMNS)
+        return render_template('predict.html', res=res)
+    else:
+        return render_template('home.html') # 模板, 模板中参数名字=传入的值  键值对方式传入
+    # 这是一个简单的例子，传入的东西其实可以加一些逻辑或者计算，从而产生了动态的输出的效果。
+
+@app.route('/predict/')
+def predict():
+    return
+
+def fn_input(data_input, LABEL_COLUMNS):
+    predict_input_fn = create_df_data(data_input, tokenizer, LABEL_COLUMNS)
+    predictions = estimator.predict(predict_input_fn)
+    res = create_output(predictions, LABEL_COLUMNS)
+    return res
+
+
+if __name__ == '__main__':
+    app.run()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

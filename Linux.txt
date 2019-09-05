@@ -1,0 +1,208 @@
+Linux
+
+Ctrl+Alt+F[1~6] 切换终端		 useradd xxx  添加用户
+root用户登录后系统提示符： #
+普通用户登录后系统提示符:  $
+退出终端： exit
+关机(需要root权限):  init 0 
+
+echo xxxx		回显，直接打印出xxxx
+history			查看历史命令
+* 				可以代表目录下所有文件
+ctrl + a: 		命令行中光标跳到首部
+ctrl + e:		命令行中光标跳到尾部
+
+Linux命令的语法格式：
+命令 【选项】 【参数】
+ls: 当前目录下的内容		ls -l /boot 	命令+选项+参数  -l是显示更多信息  /boot目录下		ls -l == ll
+whoami:	当前用户
+who: 当前登录的所有用户(其他终端中登录)
+date: 显示日期    date '052216122019'   修改日期  '月日时分年'
+cal: 日历     cal 7 1999	查看1999年7月份日历
+clear/Ctrl+l: 清屏
+hwclock -s: 同步硬件时间
+useradd xxx: 创建用户xxx    
+passwd xxx: 设置用户密码
+su - xxx： 从当前用户切换到用户xxx
+man 命令名：查看某命令的帮助信息			q 退出  上下键翻页
+命令名 --help： 同上
+. ： 表示当前目录
+.. ：表示父目录   cd..		ls .		ls ..
+pwd : 显示当前目录
+cd - : 返回上次操作的目录
+
+Linux中一些重要的目录：
+bin目录： 用来存放常用的可执行文件	比如ls、pwd命令就存放在bin目录中
+sbin目录： 用来存放系统的可执行文件
+dev目录： 设备文件目录
+etc目录： 配置文件目录
+
+cp 原文件 新目录； 将原文件复制到新目录下，并且可以重命名
+	cp /root/桌面/aaaa /opt/new_name	将aaaa文件复制到opt中，重命名为new_name
+	cp -i: 询问是否覆盖
+	cp -r: 递归式拷贝，拷贝文件夹
+alias 命令名： 查询命令的别名
+
+mv 原文件 新目录： 把一个文件或者文件夹移动到另一个目录中
+mv 文件名 新文件名： 对文件改名
+
+mkdir: 创建目录
+mkdir -p /dir1/dir2/dir3: 递归建目录，可以直接建成树形结构目录
+touch: 创建文件
+
+rm: 删除文件		会提示是否确认删除
+rm -f: 不提示，直接删除
+rm -r 目录： 删除目录
+
+cat：查看文件内容
+head: 查看文件前n行，默认10    head -5 文件名: 查看前5行
+tail: 查看后n行，和head用法相同
+	tail -f；可以动态查看
+more: 按百分比显示文件内容  回车翻页
+grep: 过滤		ls | grep 'txt'	 ls路径中过滤名字中有的txt文件
+
+
+day 4: Linux用户权限与组
+
+less /etc/passwd: 	查看用户权限和组    /bin/bash表示可以登录    /sbin/nologin不能登录
+	文件中写入了用户信息，分为7段，用：分割。
+	用户名:密码站位符(空或x):userid(num):groupid(num):描述信息:家目录:是否可以登录操作系统的可执行文件
+	根目录uid是0，自建用户的uid和gid从500开始
+/etc/shadow : 存放密码，前两个是用户名和密码   用户名:密码:......
+/etc/group : 组文件		组名：组密码：groupid
+创建一个新用户，增加的文件：
+useradd test
+tail -1 /etc/passwd			# 查看passwd文件最后一行新增的新用户属性内容
+	test:x:500::/home/test:/bin/bash
+passwd test    # 新增密码	指令tail -1 /etc/shadow 可以查看密码信息
+tail -1 /etc/group			# 查看组信息
+tail -1 /etc/gshadow 		# 查看组密码
+ls /home					# 查看家目录
+ls /var/spool/mail  		# 查看邮件信息
+id test		# 查看用户uid, gid, 组
+
+useradd命令选项：														  修改用户
+-u	指定用户uid															修改用户uid
+-g	指定用户所属的群组													修改用户gid
+-d  指定用户的家目录													修改用户的家目录
+-c  指定用户的备注信息													修改用户备注信息
+-s  指定用户所用的shell   /bin/bash  或  /sbin/nologin					修改用户所用shell
+																		-G  将一个用户加入到指定群组中(指的是副组，是一种覆盖形式)
+userdel 删除用户
+userdel -r 用户名
+
+文件可读可写可执行权限
+	ls -l 的详细信息
+	权限信息	硬链接数	属主	属组	文件大小	创建日期	文件名
+		权限信息：最后一位是. 表示在selinux安全系统下创建的。		
+		一共10位：
+		1：文件类型
+			-：普通文件
+			d：目录
+			l：软连接
+			b: block(块) 设备文件 sda(硬盘)
+			p：管道文件
+		2-4：属主的权限
+			分三类：读r，写w，执行x		没有某权限就是-
+			rwx对应的数字表示：  r -> 4  w -> 2  x -> 1
+			简化： chmod 664 a.txt    -->  u=rw-   g=rw-   o=--x
+			文件的r权限是指能够查看文件的内容
+			文件的w权限是指能够修改文件的内容     	属主和root在没有w权限时也可以修改，是覆盖。
+			文件的x权限是指能够执行文件中的内容，当做命令去运行
+		5-7：属组的权限
+		8-10：其他用户(不属于属主，且不属于属组的用户)
+		
+		chmod 修改权限		u(属主) g(属组) o(其他用户)		chmod u-rw a.txt: 属主减去rw权限   chmod u+rw a.txt:属主加上rw权限		chmod u=--- a.txt : 属主权限改为--- 写成 - 也对
+			只有文件的属主才能修改文件的权限  超级用户也可以 root 
+		
+		执行文件方法： ./文件路径	或   sh 文件路径   或  . 文件路径  或  bash 文件路径
+		
+	目录权限信息查看：ll -d 目录		ll -d /home/lhf
+		目录的r权限是指能够查看(ls)目录中的文件有哪些
+		目录的w权限是指能够添加删除重命名目录中的文件		只有有x权限时，才能w
+		目录的x权限就是能够cd进入目录
+
+chown 修改属主和属组:  文件或目录都可以改
+	chown 更改后的属主名 a.txt
+	chown .更改后的属组名 a.txt
+	chown 更改后的属主名.更改后的属组名 a.txt
+	chown -R root.root /test/		把test目录以及目录下的所有文件都改变 -R递归作用
+
+
+vim 用法：
+a或i或o进入插入模式
+Esc后冒号，w(write)表示保存,q(quit)表示退出，！强制。
+vim 对只写(-w-)文件，写入文件时，覆盖效果。
+
+
+day 05
+
+> : 左边的内容覆盖给右边
+>> : 左边内容追加到右边
+	cat /etc/passwd > new_pass.txt	: 左边的内容覆盖到右边，没有右边文件就创建新的文件
+	echo 可以代替cat    只要有输出就可以   ls -l > a.txt 也可以
+	可以用来合并文件： cat a.txt b.txt > c.txt	就把a和b文件的内容写入到c中
+wc -l a.txt : 查看文件有多少行内容
+| : 管道符号，将前面的结果放到后面的命令中使用，相当于管道中的传递	  cat a.txt | wc -l	前面的内容传到后面，计算行数
+
+archiving : 归档。将多个文件打包成一个文件
+tar -cvf test.tar a.txt b.txt c.txt : 创建打包文件test.tar，将abc文件放入。c表示creat f表示filename v表示返回显示详细信息(没有就不显示)
+	tar -tf test.tar : -t表示查看tar文件中的内容
+	tar xvf test.tar -C /opt/ : x表示解包，-C表示解包到指定目录，没有-C就解包到当前目录
+
+压缩： gzip  bzip2
+gzip a.txt : 输出为 a.txt.gz
+gunzip a.txt.gz : 输出为 a.txt
+
+将打包和压缩同时进行: tar czvf test.tar.gz a.txt b.txt		gz是为了自己看，不是必须要定义为gz结尾    z表示用gzip压缩
+	a.txt b.txt 可以换为目录  /temp/   就把temp目录中的所有内容都处理
+	解包是不用指定压缩算法，直接解  tar xvf test.tar.gz -C /test2/
+
+编辑器 vi 和 vim    vim是vi的升级版本，功能更强大。
+三种基本模式： 
+命令行模式。vi的默认模式。
+	dd: 删除光标所在的那一行		当dd下一步操作是p时，dd+p可以表达为剪切操作
+	ndd: 删除光标所在的向下n行，比如20dd是删除20行。(包含当前行)
+	yy: 复制光标所在行
+	nyy: 复制n行
+	p: 粘贴到光标所在的下一行		P: 大写P复制光标的上一行		前面可以加倍数
+	u: 撤销
+	ctrl + r : 恢复上一步操作
+	G: 跳到文件尾部
+	nG: 跳到第n行
+	gg: 移动到第一行  相当于1G
+编辑模式。 通过i/a/o进入模式。Esc回到命令行模式。
+
+扩展模式。底部出现冒号就是扩展模式。可以进行保存、退出、加密等。
+	w: 保存
+	q: 退出
+	!: 强制
+	set nu: 显示index
+
+top : 查看运行状态
+ps : 查看进程状态  ps(process search, 进程查看)
+	ps aux: 查看操作系统中所有进程和详细信息		a: all		u: uid 		x: 在哪个终端中运行
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
