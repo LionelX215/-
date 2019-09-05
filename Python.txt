@@ -1,0 +1,327 @@
+高阶函数:
+	map:	对可迭代对象中的每个值做处理
+		l = [1,2,3]
+		print(list(map(str,l)))		# 把l中的内容变为字符串形式
+	reduce:		对可迭代对象中的值合并到一起			from functools import reduce
+		l = [1,2,3]
+		print(reduce(lambda x,y:x+y, l))   将l中的所有元素加和			可以在l后面给定初始值
+	filter:		对可迭代对象做过滤
+		name = ['alex_sb', 'lihaifeng']
+		print(list(filter(lambda x:not x.endswith('sb'), name)))			将name中的尾部是'sb'的去掉。	x.endswith('') 尾部是对应字符串的挑选出来
+	lambda函数没有名字，所以没有变量在引用他，使用完后直接就被垃圾回收机制回收了。
+
+文件操作:
+	f = open('abc.py', 'rw', encoding='utf-8')		r:读	w:写(覆盖)	a:追加		r+/w+:读写	a+:追加读写		b:以字节模式，不能指定encoding
+	f.write('1111\n')
+	data = f.read()	# 读取所有内容
+	f.close()
+	# encode 编码成某种形式			decode	解码成某种形式
+	# 以rb模式读时，查看文件内容没有解码  想查看具体内容需要指定解码
+	即	print(data.decode('utf-8'))		# 把二进制解码成utf-8来查看
+	# 同理，写入时也需要
+	即	f = open('test22.py', 'wb')		f.write(bytes('111\n', encoding='utf-8'))		bytes(a, encoding='utf-8') 这是将字符串转换为bytes，必须指定encoding
+										f.write('111\n'.encode(utf-8))	也可以		# 声明字符串编码格式，默认编码为 'utf-8'  获得bytes类型对象
+	# 为什么要使用b模式： r时默认是rt  t表示文本模式  实际文件中可能是视频图片等非文本 所以b不容易出错。   还有就是所有平台都是二进制，方便使用。
+	#****************************************************** 
+	print("\u6211\u662f".encode("utf-8").decode("utf-8"))		----->		'我是'
+	"\u6211\u662f".encode("utf-8")								----->		b'\xe6\x88\x91\xe6\x98\xaf'
+	'我是'.encode('utf-8')										----->		b'\xe6\x88\x91\xe6\x98\xaf'			中文encode和Unicode编码encode输出结果相同
+	简单原则：不要对str使用encode，不要对unicode使用decode
+	#******************************************************
+	f.flush()	# 刷新，将打开文件的在内存中的内容刷新到硬盘中
+	f.readlines()	# 按行读取，可以输出为数组保存
+		for i in f.readlines():		# 全部取出放入内存
+		for i in f:					# 每次需要一行读取一行		for就是迭代方法取
+	f.seek(a,b)		# seek(a,b) 是光标移动到a字节位置，b可取0,1,2	0表示从开头位置数，1表示从当前位置数，2表示从尾部位置数(a需要是负值)
+	f.tell()		# 返回光标当前位置(字节)
+	利用seek查看大文件中的最后一行：
+		不用seek:
+			f = open('日志文件', 'rb')		# 也可以用encoding打开，不用再解码
+			data = f.readlines()
+			print(data[-1].decode('utf-8'))		# 只查看最后一行内容，但是读取了整个文件
+		使用seek:
+			f = open('日志文件', 'rb')
+			for i in f:
+				offs = -10		# 大概估算最后一行的字节数
+				while True:
+					f.seek(offs,2)
+					data = f.readlines()		# 读取光标位置后面的内容
+					if len(data) > 1:			# 如果后面的内容超过了一行，证明此时的offs光标已经不在最后一行了
+						print('文件最后一行的内容%s' % (data[-1].decode('utf-8')))
+						break
+					offs *= 2
+
+迭代器和生成器：
+	迭代器： 可迭代对象必须有next方法。		迭代只有用的时候才拿到内存，而不需要全放到内存。
+	for循环可以对列表，字典，字符串等迭代，是因为他们内部有__iter__方法，for循环调用这个方法把他们变成了可迭代对象。
+		x = 'hello'		iter_test = x.__iter__()		iter_test.__next__() --> h   	iter_test.__next__() --> e		iter_test.__next__() --> l   	..
+		全部迭代完再调用next会抛出  StopIteration  异常
+	iter_test就是一个迭代器。	__next__ -->  next()		相同  只不过next()是系统的内置函数， __next__对象的内置。
+	
+	生成器： 可以理解为一种数据类型，这种数据类型自动实现了迭代器协议，其他类型需要调用自己的内置__iter__方法，所以生成器就是可迭代对象。
+	Python中有两种不同的方式提供生成器：
+		1.生成器函数：常规函数定义，但是使用yield语句而不是return返回结果。yield语句一次返回一个结果，在每个结果中间，挂起函数的状态，以便下次从它离开的地方继续执行。
+			def fib_loop_while(max):
+				a, b = 0, 1
+				while max > 0:
+					a, b = b, a+b
+					max -= 1
+					yield a
+
+			for i in fib_loop_while(10):
+				print(i)
+		2.生成器表达式：类似于列表的推导，但是生成器返回按需产生的一个对象，而不是一次构建一个结果列表。
+			把列表解析的[]换为()就变成了生成器。	d_list = (i**2 for i in range(5))		for i in d_list:	print(i)		0  1  4  9  16
+	
+	三元表达式: a if c else b			如果c是True 返回a		如果c是False 返回b
+	列表解析： a_list = ['a%s' % i for i in range(10)]		--> ['a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9']
+		三元与列表解析结合：	a_list = ['a%s' % i for i in range(10) if i>5]		--> ['a6', 'a7', 'a8', 'a9']		
+
+	用while模拟for:
+	diedai_l = l.__iter__()
+	while True:
+		try:
+			print(diedai_l.__next__())
+		except StopIteration:
+			print('迭代完成')
+			break
+		
+两个列表中，找出相同元素和不同元素：	l1 = [1,2,3]  l2 = [2,3,4]   set1 = set(l1)  set2 = set(l2) 	相同元素： set1 & set2	 不同元素： set1 ^ set2
+set两大功能： 1.去重   2.实现逻辑操作
+
+函数定义时的参数：1.普通参数		2.默认参数
+3.可变长参数: *args, **kwargs	args中保存的是没有定义的所有多余参数，保存方式为元组	**kwargs保存输入多余的有变量名的参数，保存方式为字典
+def test(a,b,c=3,*args1,**args2):  
+	print(a,b,c,args1,args2)
+test(11,22,33,44,55,dd=66,ee=77)		---->		11, 22, 33, (44,55), {'dd':66, 'ee'=77}
+test(*[1,2,3], a=1,b=2)					---->		(1,2,3), {'a':1, 'b':2}
+test(*[1,2,3], {'a':1, 'b':2})			---->		(1,2,3,{'a':1, 'b':2}) {}		{'a':1, 'b':2}作为*中的一个元素传入
+test(*[1,2,3], **{'a':1, 'b':2})		---->		(1,2,3) {'a':1, 'b':2}			**{'a':1, 'b':2}作为**的参数输入
+总结： *可以传入列表或者没有默认的值		**传入的是等式或者字典前面加上**
+
+
+
+#******************************************************#******************************************************#******************************************************
+
+# https://blog.csdn.net/lucosax/article/details/34963593
+# '\b'：退格。将光标退格，并用空格代替，新文本在空格后面，只不过不显示空格(pycharm)。		spyder中，可以将新文本替换空格。
+import time
+
+input("欢迎使用“时间管理器”！请按回车继续。")
+
+while True:
+
+    task_name = input('请输入任务名：')
+    task_time = int(input('你觉得自己至少可以专注这个任务多少分钟？输入 N 分钟'))
+    input('此次任务信息：\n我要完成的任务：%s\n我至少要专注：%d分钟\n按回车开始专注：'%(task_name,task_time))
+
+    # 下面应该要有两行代码，自动记录可以计算以及可以打印的开始时间。
+    now_time = time.time() #当前时间
+    start_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))
+    print(start_time)
+    for t in range(task_time*60, 0, -1):
+        info = '请专注任务，还要保持专注 ' + str(t) + ' 秒哦！'
+#        print(info,end = "")
+        print('\b' * (len(info) * 2)+info, end="", flush=True)
+        time.sleep(1)
+    print('你已经专注了 %d 分钟，很棒~再加把劲，完成任务！' % task_time)  # 倒计时后，才继续运行之后的代码。
+
+
+
+    # 这里可以加一个倒计时，实时显示还剩多少时间，可参考左侧提供的资料。代码量大概有5行。
+
+    task_status = input('请在任务完成后按输入y:')
+    actual_time = input('该任务实际用时为几分钟？')
+    if task_status == 'y':
+        # 下面应该要有两行代码，自动记录可以计算以及可以打印的结束时间。
+        # 有了自动记录的始末时间后，记录的代码也需要随之改变。
+        with open('timelog2.txt','a', encoding = 'utf-8') as f:
+            f.write(task_name + ' 的预计时长为：' + str(task_time) + '分钟\n')
+            f.write(task_name + ' 的实际时长为：' + str(actual_time) + '分钟\n')
+        again = input('建立一个新任务请按 y, 退出时间日志记录器请按 q：')
+        if again == 'q':
+            break
+    else:
+        print('抱歉，你的输入有误。请重启时间记录器。')
+
+print('愿被你善待的时光，予你美好的回赠。')
+
+#******************************************************#******************************************************#******************************************************
+
+
+
+
+面向对象：	面向对象设计 		面向对象编程
+类： 一类事物的相同的特征和动作整合到一起就是类，类是抽象的概念。
+对象： 就是基于类而创建的一个具体的事物(具体存在的)。也是特征和动作整合到一起的。
+	学校类：
+	特征： name, addr, type, 
+	动作： 考试， 招生， 开除学生
+	class School():
+python 2.x 中， class Chinese:	这是经典类，类名后面直接是冒号				class Chinese(object):		这是新式类
+class Chinese:
+	'这是一个中国人的类'		# Chinese.__doc__	能够输出这行内容
+	dang = '共产'
+	def sui_di_tu_tan():
+		print('随地吐痰')
+	def ch_dui(self):
+		print('插队')
+print(Chinese.dang)			---->		共产
+Chinese.sui_di_tu_tan()		---->		随地吐痰
+Chinese.cha_dui('aa')		---->		插队
+print(dir(Chinese))			---->		['__class__', '__delatter' ....]	Chinese类的所有属性方法，包括内置		和下行代码的内容不太一样
+print(Chinese.dict)			---->		查看类的属性字典	'dang':'共产'， 'cha_dui':<function Chinese.cha_dui as 0x0000006B>, '__weakref__':<attrbute ....>	
+通过属性字典就可以调用属性和方法。	Chinese.__dict__['dang'] --> '共产'		Chinese.__dict__['cha_dui'] --> 函数内存地址	Chinese.__dict__['cha_dui']() --> '插队'
+实际 类名.属性或方法 的本质就是通过调用__dict__查找对应的字典值
+内置方法：
+	Chinese.__name__		类名
+	Chinese.__doc__			文档  '这是一个中国人的类'
+	Chinese.__base__		父类
+	Chinese.__bases__		以元组形式显示父类
+	Chinese.__dict__		类的属性字典		实例化对象的__dict__时初始化函数中的数据属性的字典，当init中没有时，才回去class中找。所以考虑同名会输出哪个结果。
+	Chinese.__module__		所在的模块
+	Chinese.__init__		初始化构造函数
+所谓实例化过程，就是在内存中开辟地址，存储init中的数据属性为字典。实例调用字典的key来获取内容，当init中没有时，才回去class中寻找，在class中的内容并不在实例化开辟
+的地址中存储。所以，不同的实例化有这不同的init中的数据属性，而class中的数据属性和方法都是相同的。 day24-04
+
+类属性的增删改查：
+	class ChinesePeople:
+		country = 'china'
+		def __init__(self, name):
+			self.name = name
+	# 查看类属性
+	print(ChinesePeople.country)
+	# 修改类属性
+	ChinesePeople.country = 'CHINA'
+	print(ChinesePeople.country)
+	# 删除类属性
+	del ChinesePeople.country
+	# 增加类属性
+	ChinesePeople.Country = 'china'
+	ChinesePeople.location = 'Asia'
+	print(ChinesePeople.__dict__)
+	# 修改都是对类操作的，不是对实例对象操作的。修改后实例对象拥有的属性也随之更改。
+	# 增加类方法
+	def eat_food(self,food): ....		
+	Chinese.eat = eat_food		# 之前实例的对象也会有这个方法
+	# 修改类方法		创建一个def 然后覆盖原来的 方法名字还是原来的
+
+实例属性的增删改查：
+	class Chinese:
+		country = 'China'
+		def __init__(self,name):
+			self.name = name
+		
+		def play_ball(self, ball):
+			print('%s 正在打 %s' % (self.name, ball))
+	p1 = Chinese('alex')
+	# 查看实例属性
+	print(p1.__dict__)		# 只有一个name:alex
+	# 增加实例属性	 	不能增加函数属性，因为实例化属性只有Init中的数据属性，函数属性属于类
+	p1.age = 18
+	# 修改
+	p1.country = 'aaa'		# 这是相当于在init中的字典里面新添加了一个country:aaa，类本身的country没有改变，只是这个实例再调用是调用Init中的了。
+	# 只有赋值，即 = 才是更改或者新增，append不是新增
+	class Chinese:
+		l = [1,2,3]
+		def __init__(self,name):
+			self.name = name
+	p1 = Chinese('abc')
+	print(p1.l)			--->		[1,2,3]
+	p1.l.append(4)		--->		[1,2,3,4]
+	p2 = Chinese('qwe')
+	print(p2.l)			--->		[1,2,3,4]		# 证明更改的是类属性，不是实例属性
+	p1.l = [a,b,c]		--->		print(p1.l)  [a,b,c]		# 赋值时，是在init中添加了l:[a,b,c]，是对实例本身的修改。
+	
+
+
+
+
+
+
+
+
+Re 匹配
+.           除换行外的任意字符
+[...]       字符集，是某字符，第一个字符是^表示取反，[abc]表示是a b c中的一个，[^a-c]表示除了a b c以外的
+\d          所有数字
+\D          所有非数字
+\s          空格，换行等字符，可以理解为认为观察为空白
+\S          除了\s的内容，大写都是小写的非
+\w          单词字符:[A-Za-z0-9_]
+\W          非单词字符
+   数量词，用在括号之后
+*           匹配前一个字符[0,无限]次
++           匹配前一个字符[1,无限]次
+?           匹配前一个字符[0,1]次
+{m}         匹配前一个字符m次
+{m,n}       匹配前一个字符[m,n]次，m和n都可以省略，表示大或小方向匹配次数不定
+            匹配是贪婪的，比如找\d{2,4}，那么优先找4的，4没有找3,3没有找2。
+   边界匹配
+^           匹配字符串开头     ^abc    开头是abc的     多行模式匹配每一行的开头
+$           匹配字符串的结尾    abc$    结尾是abc的         ^x.*y$  以x开头y结尾
+   逻辑/分组
+|           或
+()          表示组合  a(bc)+   abc  abcbc  abcbcbc
+\num	    表示重复前面第num个括号的内容一次。对所获取的匹配的引用。例如，(.)\1  匹配两个连续的相同字符。 (.).\1 匹配在文中出现两次的字符
+
+python中re使用：
+pattern = re.compile(r'hello.*\!')  # 将正则表达的式便以为pattern对象
+match = pattern.match('hello, aaaa! how are u?')    # 使用pattern匹配文本，获得匹配结果
+if match:
+    print(match.group())            --->  hello,aaa!
+
+import jieba.analyse    
+jieba.analyse.extract_tags(sentence, topK, withWeight, allowpos())
+# 基于tfidf的权重最大的词。 topk是前k个，withWeight是输出权重值，allowpos是设定词性
+jieba.analyse.set_stop_words(file_name)
+# 自定停用词
+jieba.analyse.textrank(sentence, topK, withWeight, allowpos())
+# TextRank    也是计算权重的方法
+import jieba.posseg as psag     # 这是自带的词性标注分词器，可以自定义创建
+word = psag.cut('我爱自然语言处理')
+for word, flag in words:
+    print('%s %s' % (word, flag))
+我   r
+爱   v
+自然语言    l
+处理  v
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

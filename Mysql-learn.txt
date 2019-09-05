@@ -1,0 +1,641 @@
+Mysql
+
+
+大小写不敏感
+
+
+表
+行：记录/数据
+列：字段(column)
+字段的属性：1.名称 2.数据类型 3.长度 4.约束   （指的是每个单元）
+主键
+
+\c 终止语句
+exit	\q	 quit	退出mysql
+
+
+SQL的分类
+DQL(Data Query Language)语句：数据查询语句。代表关键字：select
+DML(Data Manipulation Language)语句：数据操纵语句。代表关键字：insert delete update (对数据的增删改) 主要针对数据
+DDL(Data Defination Language)语句：数据定义语句。代表关键字：create drop alter(可以对表、库、列、索引等进行增删改) 主要针对结构
+DCL(Data Control Language)语句：数据控制语句。代表关键字：grant revoke
+
+create database bjpowernode; #创建bjpowernode数据库
+use bjpowernode; #选择bjpowernode数据库使用
+source D:\bjpowernode.sql
+drop database bjpowernode; #删除bjpowernode数据库
+drop table if exists t_student;     drop table t_student;	第一种更好  不会报错，第一个是Mysql的特色
+show tables; ----> dept emp salgrade
+desc dept;  #查询dept表的表结构
+select * from dept; #查询dept表
+
+
+插入数据：
+insert into 表名 values(表的内容);		全列插入，每个字段的值都指定
+insert into 表名(字段1,...) values(选择的字段的数据);		缺省插入：只指定某些的字段，没写的字段要求不为NULL
+insert into 表名 values(...),(....)...;				一次插入多行数据
+或 insert into 表名(字段1,...) values(值1),(值2)...;	
+
+
+修改：（逻辑删除的本质）
+update 表名 set 列1=值1,... where 条件;
+
+
+逻辑删除：
+alter table 表名 add isdelete bit default 0;
+
+
+删除：（物理删除）
+delete from 表名 where 条件;
+
+
+备份与恢复：
+sudo -s		进入超级管理员,
+cd /var/lib/mysql  然后进入mysql目录,
+mysqldump -uroot -p 数据库名 > ~/Desktop/备份文件.sql;     (后面代表生成备份的位置)
+按提示输入mysql的密码
+
+
+window下   mysql --version  或者   mysql -V  查看mysql的版本
+mysql下   select version()  查看mysql的版本
+
+所有select不改动原始数据
+select database();  查询当前所use的database
+show tables from bjpowernode;  在其他database中查看bjpowernode下的tables
+show create table dept; #查看在创建表dept的时候使用的语句
+select ename from emp; #从emp表中查询ename字段的内容
+select ename,empon from emp; #从emp表中查询ename和empon字段的内容  多个字段同时查询
+select ename,sal*12 as yearsal from emp; #从emp中查询名字和sal乘以12的值,并将字段名字输出为yearsal（as可忽略）, select不会修改原数据
+yearsal  可以这样命名为中文
+
+运算符：
+between...and...    ======     两个值之间，等同于 >= and <=
+sal>=3000 and sal<=5000;      -------->    sal between 3000 and 5000; 
+	作用于数字的时候前后都是闭区间，应用于字母时，前闭后开.
+	
+条件查询：
+select empon,ename,sal from emp where sal=5000;  #查询的条件是sal等于5000
+执行顺序：先from确定table,然后where确定条件，最后在select选择字段
+select ename,job from emp where job='MANAGER' or job='SALESMAN';  等价于
+--------------------------------job in('MANAGER','SALESMAN');
+in查询不连续的
+select ename,sal from emp where sal in(3000,5000,8000)		查询出sal是5000或3000或8000的人
+
+模糊查询：
+	% 表示任意多个任意字符
+	_ 表示一个任意字符
+	
+select ename from emp where ename like '%o%';  #查询名字中含有o的
+	% 在此处代表的是任意多个任意值 是个占位符   like 像
+	select ename from emp where ename like '_A%';  #查询第二个字母是A的
+	_ 代表只有一个任意值的占位符
+
+排序： 
+select ename,sal from emp order by sal   排序  后面加asc升序（默认）  加desc降序
+select ename,sal from emp order by sal as desc, ename asc;   当sal相同时，ename升序决定谁先谁后
+select ename,sal from emp order by 2; 按照第二个字段排序
+
+数据处理函数：（用于mysql数据库）
+select lower(ename) from emp;  # 改为小写      upper 大写   substr 取子串
+select substr(ename,1,3) from emp; # 目标字段，开始位置，截取长度   每行1-3个字母
+	length 获取字符串长度		trim 去除空格		round 取数据的位数     rand 随机数  
+	
+%Y %m %d %H %i %s
+str_to_date:(varchar------>date)
+select ename,hiredate from emp where hiredate = str_to_date('12-17-1980','%m-%d-%Y');
+insert into	t_student(id,name,birth) values(2,'zhangsan',str_to_date('10-11-1970','%m-%d-%Y')
+date_format:(date-------->具有特定格式的字符串varchar)
+date_format(日期数据,'日期格式')
+查询员工入职日期，以'%m-%d-%Y'格式输出:
+	select ename,date_format(hiredate,'%m-%d-%Y') from emp;
+
+聚合：  当使用了聚合，就要考虑分组order by。
+count(*或某个字段)		计算总共有多少行
+max(字段)		计算字段内的最大值
+min(字段)
+sum(字段)		求和，数字类型
+avg(字段)		求平均值，数字类型
+
+分组函数/多行处理函数：多行数据输出在一起，不是一行一个输出。  
+e.g.   select sum(sal) from emp;		输出的是字段的求和，只有一个数据 		count(*)表示满足where要求的个数
+分组函数不能直接使用在where后面
+e.g.   select ename,sal from emp where sal>avg(sal)  ERROR！！
+
+select distinct job from emp;   distinct前面不能出现字段: ename,distinct job   ERROR！！
+返回不含重复项的数据
+select distinct deptno,jon from emp; 返回去除deptno和job字段中同时重复的项，只有一项的还会保留
+
+执行顺序：先    """Return the string obtained by replacing the leftmost
+    non-overlapping occurrences of the pattern in string by the
+    replacement repl.  repl can be either a string or a callable;
+    if a string, backslash escapes in it are processed.  If it is
+    a callable, it's passed the match object and must return
+    a replacement string to be used.""" 后group by
+
+分组查询:  group by				having
+order by:表示通过哪个或者哪些字段进行排序
+group by:表示通过哪个或者哪些字段进行分组
+e.g.:找出每个工作岗位的最高薪水：
+	select job,max(sal) from emp group by job;
+	select 后面只能跟分组的字段，或者分组函数
+	计算不同部门中，不同工作岗位的最高薪水
+	select deptno,job,max(sal) from emp group by deptno,job
+	除掉MANAGER之外的其他岗位的最高薪水
+	select job,max(sal) from emp where job<>'MANAGER' group by job
+having 对数据过滤  与where的区别：	where对分组前的数据过滤，所以where后面不能直接添加分组函数，having对分组后的数据进行过滤
+原始集-->where-->结果集1-->分组(group by)-->结果集2-->having-->最终结果集
+e.g.: 找出每个工作岗位的平均薪水，要求平均薪水大于1500
+	select jon,avg(sal) from emp group by job having avg(sal)<1500;
+
+一个完整的DQL语句总结:
+	select
+		...
+	from
+		...
+	where
+		...
+	group by
+		...
+	having
+		...
+	order by
+		...
+	以上关键字的顺序不能变
+	执行顺序：
+	1. from			从某张表中检索数据
+	2. where		经过某条件进行过滤
+	3. group by		然后分组
+	4. having		分组之后不满意再过滤
+	5. select		查询出来
+	6. order by		排序输出
+	
+链接查询：
+	- 只从一张表中查询叫做单表查询
+	- 多张表联合起来查询
+分类： 
+	- SQL92
+	- SQL99 主要
+链接方式：
+	- 内连接：两个表能够完全匹配记录查询出来
+		* 等值链接
+		* 非等值连接
+		* 自连接
+	- 外链接：两个表能够完全匹配记录查询出来之外，将其中一张表的记录无条件的完全查询出来，对方表没有匹配的记录，会自动模拟NULL匹配
+			  外连接的查询记录条数>=内连接的
+		* 左外链接 （左链接）
+		* 右外链接 （右链接）
+	- 全连接（很少使用）
+
+表A inner join 表B: 表A和表B匹配的行会出现在结果中。
+表A left join 表B: 表A和表B匹配的行会出现在结果中，外加表A中独有的数据，没对应的数据使用null填充
+表A right join 表B: 表A和表B匹配的行会出现在结果中，外加表B中独有的数据，没对应的数据使用null填充
+
+在多表链接查询时，一般会起别名，防止字段名在多个表存在。提高效率，可读性高。
+select e.ename,d.dname from emp e, dept d;
+	
+e.g.: 查询每个员工名称和对应的部门名称
+	员工名在emp表中，部门名称在dept表中
+	select e.ename,d.dname from emp e, dept d where e.deptno == d.deptno
+	这是SQL92语法，属于内连接中的等值链接
+	
+	select e.ename,d.dname from emp e join dept d on e.deptno == d.deptno
+	这是SQL99语法，属于内连接中的等值链接, 将表连接和过滤分离，99中后面可以再单独where进行过滤
+	
+e.g.:找出每一个员工对应的工资等级，要求显示员工名，工资，工资等级
+	select ename,sal from emp; <员工表>
+	+--------+---------+
+	| ename  | sal     |
+	+--------+---------+
+	| SIMITH |  800.00 |
+	| ALLEN  | 1600.00 |
+	| WARD   | 1250.00 |
+	| JONES  | 2975.00 |
+	| MARTIN | 1250.00 |
+	| BLAKE  | 2850.00 |
+	| CLARK  | 2450.00 |
+	| SCOTT  | 3000.00 |
+	| KING   | 5000.00 |
+	| TURNER | 1500.00 |
+	| ADAMS  | 1100.00 |
+	| JAMES  |  950.00 |
+	| FORD   | 3000.00 |
+	| MILLER | 1300.00 |
+	+--------+---------+
+	select * from salgrade;	<工资等级表>
+	+-------+-------+-------+
+	| grade | losal | hisal |
+	+-------+-------+-------+
+	|     1 |   700 |  1200 |
+	|     2 |  1201 |  1400 |
+	|     3 |  1401 |  2000 |
+	|     4 |  2001 |  3000 |
+	|     5 |  3001 |  5000 |
+	+-------+-------+-------+
+	select e.ename,e.sal,s.grade from emp e join salgrade s on e.sal between s.losal and s.hisal;		内连接中的非等值连接
+	+--------+---------+-------+
+	| ename  | sal     | grade |
+	+--------+---------+-------+
+	| SIMITH |  800.00 |     1 |
+	| ALLEN  | 1600.00 |     3 |
+	| WARD   | 1250.00 |     2 |
+	| JONES  | 2975.00 |     4 |
+	| MARTIN | 1250.00 |     2 |
+	| BLAKE  | 2850.00 |     4 |
+	| CLARK  | 2450.00 |     4 |
+	| SCOTT  | 3000.00 |     4 |
+	| KING   | 5000.00 |     5 |
+	| TURNER | 1500.00 |     3 |
+	| ADAMS  | 1100.00 |     1 |
+	| JAMES  |  950.00 |     1 |
+	| FORD   | 3000.00 |     4 |
+	| MILLER | 1300.00 |     2 |
+	+--------+---------+-------+
+
+e.g.: 找出每个员工的上级领导，要求显示对应的员工名和对应的领导名
+	select empno,ename,mgr from emp;	员工编号,员工名和领导编号
+	+-------+--------+------+
+	| empno | ename  | mgr  |
+	+-------+--------+------+
+	|  7369 | SIMITH | 7902 |
+	|  7499 | ALLEN  | 7698 |
+	|  7521 | WARD   | 7698 |
+	|  7566 | JONES  | 7839 |
+	|  7654 | MARTIN | 7698 |
+	|  7698 | BLAKE  | 7839 |
+	|  7782 | CLARK  | 7839 |
+	|  7788 | SCOTT  | 7566 |
+	|  7839 | KING   | NULL |
+	|  7844 | TURNER | 7698 |
+	|  7876 | ADAMS  | 7788 |
+	|  7900 | JAMES  | 7698 |
+	|  7902 | FORD   | 7566 |
+	|  7934 | MILLER | 7782 |
+	+-------+--------+------+
+	select a.empno,a.ename empname,b.ename leadername from emp a join emp b on b.empno=a.mgr;	内连接中的自连接
+	+-------+---------+------------+
+	| empno | empname | leadername |
+	+-------+---------+------------+
+	|  7369 | SIMITH  | FORD       |
+	|  7499 | ALLEN   | BLAKE      |
+	|  7521 | WARD    | BLAKE      |
+	|  7566 | JONES   | KING       |
+	|  7654 | MARTIN  | BLAKE      |
+	|  7698 | BLAKE   | KING       |
+	|  7782 | CLARK   | KING       |
+	|  7788 | SCOTT   | JONES      |
+	|  7844 | TURNER  | BLAKE      |
+	|  7876 | ADAMS   | SCOTT      |
+	|  7900 | JAMES   | BLAKE      |
+	|  7902 | FORD    | JONES      |
+	|  7934 | MILLER  | CLARK      |
+	+-------+---------+------------+
+e.g.:找出每一个员工对应的部门名称，要求部门名全部显示（有一个部门名没有员工）				外连接:两个表连接查询不是全部能对照，有多余的需要直接加上。
+	select e.ename,d.dname from emp e right join dept d on e.deptno=d.deptno;     右外连接，把右边的直接加上
+	+--------+-------------+
+	| ename  | dname       |
+	+--------+-------------+
+	| SIMITH | RESEARCHING |
+	| ALLEN  | SALES       |
+	| WARD   | SALES       |
+	| JONES  | RESEARCHING |
+	| MARTIN | SALES       |
+	| BLAKE  | SALES       |
+	| CLARK  | ACCOUNTING  |
+	| SCOTT  | RESEARCHING |
+	| KING   | ACCOUNTING  |
+	| TURNER | SALES       |
+	| ADAMS  | RESEARCHING |
+	| JAMES  | SALES       |
+	| FORD   | RESEARCHING |
+	| MILLER | ACCOUNTING  |
+	| NULL   | OPERATIONS  |
+	+--------+-------------+
+多张表进行表连接的语法格式：
+select
+	xxx
+from
+	a
+join
+	b
+on
+	条件
+join
+	c
+on
+	条件;
+e.g.: 名称 部门 工资等级
+	select e.ename,d.dname,s.grade from emp e join dept d on e.deptno=d.deptno join salgrade s on e.sal between s.losal and s.hisal;
+	+--------+-------------+-------+
+	| ename  | dname       | grade |
+	+--------+-------------+-------+
+	| SIMITH | RESEARCHING |     1 |
+	| ALLEN  | SALES       |     3 |
+	| WARD   | SALES       |     2 |
+	| JONES  | RESEARCHING |     4 |
+	| MARTIN | SALES       |     2 |
+	| BLAKE  | SALES       |     4 |
+	| CLARK  | ACCOUNTING  |     4 |
+	| SCOTT  | RESEARCHING |     4 |
+	| KING   | ACCOUNTING  |     5 |
+	| TURNER | SALES       |     3 |
+	| ADAMS  | RESEARCHING |     1 |
+	| JAMES  | SALES       |     1 |
+	| FORD   | RESEARCHING |     4 |
+	| MILLER | ACCOUNTING  |     2 |
+	+--------+-------------+-------+
+
+子查询：select 嵌套 select 语句   用于where 或者 from  后面
+e.g.: 找出薪水比公司平均薪水高的员工，要求显示员工名和薪水
+	select ename,sal from emp where sal > (select avg(sal) from emp)
+
+e.g.: 找出每个部门的平均薪水，并且找出平均薪水的薪水等级
+	第一步： 找出每个部门的平均薪水
+	select t.deptno,t.avgsal,s.grade from (select deptno,avg(sal) from emp group by deptno) t join salgrade s on t.avgsal between s.losal and s.hisal
+
+union:
+e.g.:	select ename,job from emp where job='MANAGER' or job='SALESMAN'
+等同于：	select ename,job from emp where job='MANAGER'
+			union
+			select ename,job from emp where job='SALESMAN'
+		注意  select 选择的字段数量必须相同
+	
+limit:用来获取一张表中的某部分数据		只有mysql有limit 其他的没有
+	  limit出现在SQL语句中的最后的位置
+e.g.: 找出emp表中的前五条记录
+	select ename from emp limit 5;  =====    select ename from emp limit 0,5;
+e.g.: 找出公司中工资排名在前五的员工
+	思路：降序排序选择前五个
+	select ename,sal from emp order by sal desc limit 5;
+通用的分页SQL语句:
+select
+	ename,sal
+from
+	emp
+order by
+	sal sesc
+limit
+	(pageNo - 1) * pageSize, pageSize;
+
+select * from 表名 limit start,count;		从start开始拿，拿count个。从0开始。
+	
+
+表：
+创建表：
+语法格式：
+create table tableName(				create是DDL语句
+	columnNmae dataType(length),
+	..........
+	columnNmae dataType(length)
+);
+set character_set_results='gbk';
+数据类型：
+	- VARCHAR
+		* 可变长度字符串
+			varchar(3)   存储的字符不能超过3个字符
+	- CHAR
+		* 定长字符串
+			比如 char(10)  那么输入的数据一定会占用10个字符，不足就加入空格
+			但是效率高，因为内存分配固定
+	- INT
+		* 整数
+			INT(3)  表示最大可以存储999
+	- FLOAT
+		* 长整型
+			对应  long
+	- DOUBLE
+		* 浮点型单精度
+			DOUBLE(7,2)    7表示7个有效数字，2个小数位
+	- DATE
+		* 浮点型双精度
+			一般不使用，字符串代替比较多
+	- BLOB
+		* Binary Large Object	二进制大对象
+			专门存储 图片 声音 视频等数据
+	- CLOB
+		* Character Large Object	字符大对象
+			可以存储4个G的字符串  即  可以存储很大的文本
+	- 其他...
+
+e.g.：建立学生表
+	字段包括： 学号(INT)、姓名(VARCHAR)、性别(CHAR)、出生日期(DATE)、邮箱地址(VARCHAR)
+	CREATE TABLE t_student(
+	no INT(10),
+	name VARCHAR(32),
+	sex CHAR(1),
+	birth DATE,
+	email VARCHAR(128)
+	);
+
+增/删/改表中的数据，不是表结构：	[insert delete update]
+insert语句：	像表格插入数据，属于DML语句，DML语句包括：insert,delete,update 增删改 和表结构无关
+insert语法格式: insert into tableName(columnname1,columnname2,......) values(value1,value2,....)
+				字段和值必须一一对应，个数相同，数据类型必须一致。
+e.g.: insert into t_student(no,name,sex,birth,email) values(1,'zhangsan','m','1970-10-11','zhangsan@qq.com');
+insert into t_student(no,name,sex,birth,email) values(2,'lisi','f','1970-10-11','lisi@qq.com');
+	+------+----------+------+------------+-----------------+
+	| no   | name     | sex  | birth      | email           |
+	+------+----------+------+------------+-----------------+
+	|    1 | zhangsan | m    | 1970-10-11 | zhangsan@qq.com |
+	|    2 | lisi     | f    | 1970-10-11 | lisi@qq.com     |
+	+------+----------+------+------------+-----------------+
+默认值是NULL的，可以不传入数据，显示的数据为NULL
+insert into t_student(no,name) values(3,'aaaa')		insert into t_student(no,name,email) values(NULL,'bbb',NULL)
+省略字段名字： insert into t_student values(4,'zhoaliu','m','1970-11-3','zhaoliu@163.com')   可以
+	如果值的个数和字段个数不同，不可以，会报错    并且不能插入中文数据,可以用navicat实现
+创建表的时候添加默认值:
+e,g. create table t_student(
+	sex char(1) default 'm'
+);			sex的默认值不再是NULL 而是m
+关于SQL脚本：
+	- 是个普通的文本文件，后缀是sql
+	- 使用脚本  source path  直接执行脚本  path是路径
+
+获取系统当前时间：	select now(); 	
+	+---------------------+
+	| now()               |
+	+---------------------+
+	| 2018-11-21 14:49:18 |
+	+---------------------+
+	e.g.: 创建机构表：
+	create table t_organization(
+			code char(10),
+			name varchar(32),
+			createTime date
+	);
+	insert into t_organization(code,name,createTime) values('111','A',now());
+	insert into t_organization(code,name,createTime) values('222','B',now());
+	insert into t_organization(code,name,createTime) values('333','C',now());
+		+------+------+------------+
+		| code | name | createTime |
+		+------+------+------------+
+		| 111  | A    | 2018-11-21 |
+		| 222  | B    | 2018-11-21 |
+		| 333  | C    | 2018-11-21 |
+		+------+------+------------+
+update:
+	语法格式:	update tableName set 字段名=字段值,字段名=字段值,字段名=字段值,..字段名=字段值 where 条件
+	update语句没有条件会将所有的记录都更新
+	e.g.: 将no=3的记录名字改为张三，邮箱改为XXX
+		update t_student set name='zhangsan',email='zhangsan@qq.com' where no=3;
+		update t_student set name='lisi'; 		将所有名字都改为lisi;
+		update t_student set name='zhangsan' where ename like '%O%'; 将名字中带有O的都改为张三
+
+delete:
+	语法格式：	delete from tableName where 条件；
+	没有条件限制，会将表中所有记录都删除
+	e.g.: delete from t_student where no=3;  删除no=3的记录
+		  delete from t_student;	删除t_student表格
+	
+
+表的复制:	create table emp1 as select * from emp;		创造一个和emp完全相同的数据，名字叫做emp1.  快速创建表并插入数据。
+	create table emp2 as select empno,ename,sal fromemp;		复制了三个字段，创建新的表，叫做emp2.
+	语法结构： create table tableName as select columnNmae from tableName;
+
+将查询结果插入表中： insert into emp2 select * from emp where sal==3000;
+
+增/删/改表结构： 	DDL语句
+	- 添加字段：[增]
+		alter table t_student add tel varchar(40);
+	- 修改字段的长度：[改]
+		alter table t_student modify tel varchar(20);
+	- 删除字段：[删]
+		alter table t_student drop tel;
+
+
+约束：constraint
+	- 约束就是表中数据的限制条件。比如名字不能重复
+	- 表在设计的时候加入越是的目的就是为了保证表中的记录完整和有效。
+约束有哪些？
+	- 非空约束		not null
+	- 唯一性约束	unique
+	- 主键约束		primary key	简称PK
+	- 外键约束		foreign key	简称FK
+	- 检查约束 		[Mysql不支持，Oracle支持]
+非空约束： not null 约束的字段不能为NULL，必须给定具体内容
+e.g.: 创建用户表，用户名不能为空
+		drop table if exists t_user;
+		create table t_user(
+			id int(10),
+			name varchar(32) not null,  注意此处  不给默认值，默认产生null，插入是如果不定义name就会报错
+			email varchar(128)
+		);
+		比如： insert into t_user(id,email) values(2,'asd@qq.com')		会报错
+
+
+
+
+
+
+
+
+
+
+
+Mysql高级：
+	关系：引用主键。外键约束。
+创建表的语句如下：
+create table scores(
+id int auto_increment primary key not null,
+studid int,
+subid int,
+score decimal(5,2)
+);
+为stuid增加外键的表创建语句：
+create table scores(
+id int auto_increment primary key not null,
+studid int,
+subid int,
+score decimal(5,2),
+foreign key(stuid) references student(id),
+foreign key(subid) references subject(id)
+);
+foreign key(当前表的字段) references 引用表(引用表的字段，一般是主键)
+
+当删除student(id)中的数据时，连接的数据应该怎么办？
+级联操作：在创建表时指定级联操作，也可以在创建表后修改外键的级联操作
+级联操作的类型包括：
+	restrict(限制):默认值，抛出异常
+	cascade(级联):如果主表的记录删除，则从表中相关联的记录都删除
+	set null:将外键设置为空
+	not action:什么都不做
+
+自关联：
+	foreign key(pid) references 自己的表(某字段，一般主键)
+
+视图：本质就是对查询的一个封装。
+	create view v_stu_sub_sco as
+	select * from scores as sco inner join students as stu on sco.stuid = stu.id
+	inner join subject as sub on sco.stuid = sub.id
+	创建了一个名字为v_stu_sub_sco的视图 可以用show tables看到  select * from v_stu_sub_sco; 就是刚的查询结果。
+	
+事物：当对数据变更影响的时候，保证操作有效。如果中间某个出错，那么退回不改变。
+	事物四大特性(ACID):
+	原子性(Atomicity): 事物中的全部操作在数据库中是不可分割的，要么全部完成，要么均不执行。
+	一致性(Consistency): 几个并行执行的事物，去执行结果必须与某一顺序串行结果相一致。
+	隔离性(Isolation)： 事物的执行不受其他事物的干扰，事物执行的中间结果对其他事物必须是透明的。
+	持久性(Durability): 对于任意已提交事物，系统必须保证该事物对数据库的改变不被破坏，即使数据库出现故障。
+	
+	用事物的情况：当数据被更改时(包括insert update delete)。
+	事物语句：
+	开启事物(begin)、提交事物(commit)、回滚(rollback)。
+	开启后，在begain和conmmit/rollback之间的语句将在内存级执行，知道commit了才会执行，rollback会放弃更新。
+	
+
+索引：
+	目的是快速找到数据。 数据默认按照主键索引存。  索引的创建会增加物理上的开销。
+	索引分为单列索引和组合索引：
+		单列索引：即一个索引只包含单个列，一个表可以有多个单列索引，但这不是组合索引。
+		组合索引：即一个索引包含多个列。
+	查看索引：	show index from 表名；
+	创建索引：  create index indexName on 表(字段名字(长度))
+	删除索引：	drop index [indexName] on 表;
+
+
+连接python:
+	connection对象：
+		用于建立与数据库的连接，创建对象,调用connect()方法。默认开启事物，当对数据更改操作后，需要事物。
+		conn = connect(参数列表)
+		对象的方法：
+		close()	关闭连接
+		commit()	事物，所以需要提交才能生效。
+		rollback()	事物，放弃之前的操作
+		cursor()	返回Cursor对象，用于执行sql语句并获得结果
+	Cursor对象
+		用于执行sql语句，创建对象，调用Connection对象的cursor()方法。
+		cursor1 = conn.cursor()
+		对象的方法：
+		execute(operation [,parameters]) 执行语句，返回受影响的行数，operation就是mysql中的语句
+		fetchone() 执行查询语句时，获取查询结果集的第一个数据，返回一个元组
+		next() 执行查询语句时，获取当前行的下一行
+		fetchall() 执行查询时，获取结果集的所有行，一行构成一个元组，再将这些元组装入一个元组返回
+		scroll(value[,mode]) 将行指针移动到某个位置
+			mode表示移动的方式
+			mode的默认值为relative，表示基于当前行移动到value，value为正则向下移动，value为负则向上移动。
+			mode的值为absolute，表示基于第一条数据的位置，第一条数据的位置为0.
+	
+	e.g.:
+	import MySQLdb
+	try:
+		conn = MySQLdb.connect(host='localhost', port=3306, db='test', user='root', passwd='mysql的密码', db='数据库名字', charset='utf8')
+		cs1 = conn.cursor()
+		count = cs1.excute("insert into students(sname) values('张良')")
+		print(count)
+		conn.commit()
+		cs1.close()
+		conn.close()
+	except Exception, e:
+		print(e.message)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
